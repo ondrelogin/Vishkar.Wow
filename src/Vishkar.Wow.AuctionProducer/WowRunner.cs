@@ -14,6 +14,8 @@ namespace Vishkar.Wow.AuctionProducer
     private readonly IQueueProducerService<string> _queueSvc;
     private readonly ILogger<WowRunner> _logger;
 
+    private const string _topic = "commodities-raw";
+
     public WowRunner(IAuctionHouseApi auctionHouse, IQueueProducerService<string> queueSvc, IEcology ecology, ILogger<WowRunner> logger)
     {
       _auctionHouse = auctionHouse;
@@ -46,7 +48,7 @@ namespace Vishkar.Wow.AuctionProducer
         var msgJson = JsonSerializer.Serialize(msg);
 
         string key = $"raw_{msg.Id}";
-        await _queueSvc.SendMessageAsync(key, msgJson, "commodities-raw");
+        await _queueSvc.SendMessageAsync(key, msgJson, _topic);
       }
 
       return 0;

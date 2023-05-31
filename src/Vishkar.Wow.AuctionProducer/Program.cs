@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Vishkar.Wow.AuctionProducer.Services;
 using Vishkar.Wow.Core;
+using Vishkar.Wow.Core.Extensions.DependencyInjection;
 
 namespace Vishkar.Wow.AuctionProducer
 {
@@ -41,27 +42,13 @@ namespace Vishkar.Wow.AuctionProducer
       }
       else
       {
-        string clientId = ctx.Configuration.GetSection("VishWow_ClientId").Value ?? "";
-        string clientSecret = ctx.Configuration.GetSection("VishWow_ClientSecret").Value ?? "";
-
-        services.AddWarcraftClients(clientId, clientSecret);
+        var secret = services.ConfigureWarcraftClientSecrets(ctx.Configuration);
+        services.AddWarcraftClients(secret.ClientId, secret.ClientSecret);
       }
-
-      // setup kafka
-      string kafkaIniFilePath = ctx.Configuration.GetSection("VishkarKafkaIniFilePath").Value ?? "";
-      if (string.IsNullOrWhiteSpace(kafkaIniFilePath))
-      {
-        kafkaIniFilePath = System.IO.Path.Combine(Environment.CurrentDirectory, "vishkar-kafka.props");
-      }
-      if (!File.Exists(kafkaIniFilePath)) throw new FileNotFoundException($"Unable to find Kafak configuration file '{kafkaIniFilePath}'!", kafkaIniFilePath);
-      var kafkaBuilder = new KafkaConfigBuilder
-      {
-        ConfigIniFilePath = kafkaIniFilePath
-      };
 
       services
-        .AddTransient<IEcology, Ecology>()
-        .AddSingleton<IKafkaConfigBuilder>(kafkaBuilder)
+        .AddKafka(ctx.Configuration)
+        .AddWowCore()
         .AddTransient<IQueueProducerService<string>, KafkaQueueProducerService<string>>()
         .AddTransient<WowRunner>();
     }
