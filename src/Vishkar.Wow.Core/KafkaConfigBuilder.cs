@@ -8,18 +8,24 @@ namespace Vishkar.Wow.Core
 {
   public interface IKafkaConfigBuilder
   {
-    IConfigurationRoot Build();
+    IProducer<TKey, TValue> CreateProducer<TKey, TValue>();
+
+    IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>();
   }
 
   public class KafkaConfigBuilder : IKafkaConfigBuilder
   {
     public string ConfigIniFilePath { get; init; }
 
-    public IConfigurationRoot Build()
+    public IProducer<TKey, TValue> CreateProducer<TKey, TValue>()
     {
-      var config = new ConfigurationBuilder()
-            .AddIniFile(this.ConfigIniFilePath)
-            .Build();
+      var config = this.BuildConfigRoot();
+      return new ProducerBuilder<TKey, TValue>(config.AsEnumerable()).Build();
+    }
+
+    public IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>()
+    {
+      var config = this.BuildConfigRoot();
 
       string kafkaGroupId = config.GetSection("group.id").Value ?? "";
       if (string.IsNullOrWhiteSpace(kafkaGroupId))
@@ -33,7 +39,14 @@ namespace Vishkar.Wow.Core
         config["auto.offset.reset"] = "earliest";
       }
 
-      return config;
+      return new ConsumerBuilder<TKey, TValue>(config.AsEnumerable()).Build();
+    }
+
+    private IConfigurationRoot BuildConfigRoot()
+    {
+      return new ConfigurationBuilder()
+            .AddIniFile(this.ConfigIniFilePath)
+            .Build();
     }
   }
 }

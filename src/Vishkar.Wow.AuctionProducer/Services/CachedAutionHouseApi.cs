@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
 using ArgentPonyWarcraftClient;
+using Vishkar.Wow.Core.Settings;
 
 namespace Vishkar.Wow.AuctionProducer.Services
 {

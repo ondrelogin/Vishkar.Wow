@@ -21,6 +21,24 @@ namespace Vishkar.Wow.Core.Extensions.DependencyInjection
       return info;
     }
 
+    public static CachedWowSettings ConfigureWowSettings(this IServiceCollection services, IConfiguration config)
+    {
+      // register wow client..
+      string useWowCache = config.GetSection("UseWowCache").Value ?? "";
+      string cacheFolderPath = config.GetSection("WowCacheFolderPath").Value ?? "";
+      if (string.IsNullOrWhiteSpace(cacheFolderPath)) { cacheFolderPath = Environment.CurrentDirectory; }
+
+      bool isCacheOn = useWowCache.EqualsAnyCase("true");
+      
+      var wowSettings = new CachedWowSettings
+      {
+        IsCacheOn = isCacheOn,
+        CachedFolder = cacheFolderPath
+      };
+      services.AddSingleton<CachedWowSettings>(wowSettings);
+      return wowSettings;
+    }
+
     public static IServiceCollection AddKafka(this IServiceCollection services, IConfiguration config)
     {
       // setup kafka

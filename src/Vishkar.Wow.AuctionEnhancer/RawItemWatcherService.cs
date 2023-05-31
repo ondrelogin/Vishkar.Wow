@@ -28,7 +28,7 @@ namespace Vishkar.Wow.AuctionEnhancer
       };
 
       _logger.LogInformation($"Connecting to {_topic}....");
-      using (var consumer = new ConsumerBuilder<string, string>(_builder.Build().AsEnumerable()).Build())
+      using (var consumer = _builder.CreateConsumer<string, string>())
       {
         consumer.Subscribe(_topic);
         try
@@ -38,7 +38,7 @@ namespace Vishkar.Wow.AuctionEnhancer
             var cr = consumer.Consume(cts.Token);
 
             // TODO process the message for real...
-            _logger.LogInformation($"Consumed msg from topic {_topic} with key {cr.Message.Key, -10}...");
+            _logger.LogInformation($"Consumed msg from topic {_topic} with key {cr.Message.Key,-10}...");
           }
         }
         catch (OperationCanceledException)

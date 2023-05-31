@@ -1,20 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
 using Confluent.Kafka;
-using Microsoft.Extensions.Configuration;
 
 namespace Vishkar.Wow.Core
 {
   public class KafkaQueueProducerService<T> : IQueueProducerService<T>, IDisposable
   {
-    private readonly IKafkaConfigBuilder _builder;
     private readonly Lazy<IProducer<string, T>> _producerSvc;
 
     public KafkaQueueProducerService(IKafkaConfigBuilder builder)
     {
       //
-      _builder = builder;
-      _producerSvc = new Lazy<IProducer<string, T>>(this.CreateProducer);
+      _producerSvc = new Lazy<IProducer<string, T>>(builder.CreateProducer<string, T>);
     }
 
     public async Task SendMessageAsync(string key, T message, string topic)
@@ -39,12 +35,6 @@ namespace Vishkar.Wow.Core
       {
         _producerSvc.Value.Dispose();
       }
-    }
-
-    private IProducer<string, T> CreateProducer()
-    {
-      var config = _builder.Build();
-      return new ProducerBuilder<string, T>(config.AsEnumerable()).Build();
     }
   }
 }

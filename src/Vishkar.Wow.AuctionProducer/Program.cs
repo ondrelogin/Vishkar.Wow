@@ -26,19 +26,11 @@ namespace Vishkar.Wow.AuctionProducer
     private static void DiConfig(HostBuilderContext ctx, IServiceCollection services)
     {
       // register wow client..
-      string useWowCache = ctx.Configuration.GetSection("UseWowCache").Value ?? "";
-      if (useWowCache.EqualsAnyCase("true"))
+      var wowCacheSettings = services.ConfigureWowSettings(ctx.Configuration);
+      if (wowCacheSettings.IsCacheOn)
       {
-        string cacheFolderPath = ctx.Configuration.GetSection("WowCacheFolderPath").Value ?? "";
-        if (string.IsNullOrWhiteSpace(cacheFolderPath)) { cacheFolderPath = Environment.CurrentDirectory; }
-
-        var wowSettings = new CachedWowSettings
-        {
-          CachedFolder = cacheFolderPath
-        };
-        services
-          .AddSingleton<CachedWowSettings>(wowSettings)
-          .AddTransient<IAuctionHouseApi, CachedAutionHouseApi>();
+        // mainly used for development so we don't dump thousands of auction items into kafka
+        services.AddTransient<IAuctionHouseApi, CachedAutionHouseApi>();
       }
       else
       {
