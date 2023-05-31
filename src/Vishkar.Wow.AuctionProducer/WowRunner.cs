@@ -24,7 +24,7 @@ namespace Vishkar.Wow.AuctionProducer
       _logger = logger;
     }
 
-    public async Task<int> Execute()
+    public async Task<int> ExecuteAsync()
     {
       // later need this more of a polling basis...
       _logger.LogInformation("retrieving commodities...");

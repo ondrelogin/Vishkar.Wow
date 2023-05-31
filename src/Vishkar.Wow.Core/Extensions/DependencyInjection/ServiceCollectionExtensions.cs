@@ -59,7 +59,9 @@ namespace Vishkar.Wow.Core.Extensions.DependencyInjection
 
     public static IServiceCollection AddWowCore(this IServiceCollection services)
     {
-      return services.AddTransient<IEcology, Ecology>();
+      return services
+        .AddTransient<IEcology, Ecology>()
+        .AddTransient<IVishkarFileService, VishkarFileService>();
     }
   }
 }

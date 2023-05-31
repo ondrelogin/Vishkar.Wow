@@ -1,25 +1,32 @@
 ﻿using System;
-using Confluent.Kafka;
-using Microsoft.Extensions.Configuration;
+using System.Text.Json;
+using ArgentPonyWarcraftClient;
 using Microsoft.Extensions.Logging;
+using Vishkar.Wow.AuctionEnhancer.Services;
 using Vishkar.Wow.Core;
+using Vishkar.Wow.Core.Models;
 
 namespace Vishkar.Wow.AuctionEnhancer
 {
   public class RawItemWatcherService
   {
     private readonly IKafkaConfigBuilder _builder;
+    private readonly IItemApi _itemSvc;
+    private readonly IQueueProducerService<string> _targetQueue;
     private readonly ILogger<RawItemWatcherService> _logger;
 
-    private const string _topic = "commodities-raw";
+    private const string _sourceTopic = "commodities-raw";
+    private const string _targetTopic = "commodities";
 
-    public RawItemWatcherService(IKafkaConfigBuilder builder, ILogger<RawItemWatcherService> logger)
+    public RawItemWatcherService(IKafkaConfigBuilder builder, IItemApi itemSvc, IQueueProducerService<string> targetQueue, ILogger<RawItemWatcherService> logger)
     {
       _builder = builder;
+      _itemSvc = itemSvc;
+      _targetQueue = targetQueue;
       _logger = logger;
     }
 
-    public async Task<int> Execute()
+    public async Task<int> ExecuteAsync()
     {
       var cts = new CancellationTokenSource();
       Console.CancelKeyPress += (_, e) => {
@@ -27,18 +34,40 @@ namespace Vishkar.Wow.AuctionEnhancer
         cts.Cancel();
       };
 
-      _logger.LogInformation($"Connecting to {_topic}....");
+      var asCache = _itemSvc as CachedWarcraftItemApi;
+      if (asCache != null)
+      {
+        _logger.LogInformation("preloading cache...");
+        await asCache.PreloadCacheAsync();
+      }
+      
+      _logger.LogInformation($"Connecting to {_sourceTopic}....");
       using (var consumer = _builder.CreateConsumer<string, string>())
       {
-        consumer.Subscribe(_topic);
+        consumer.Subscribe(_sourceTopic);
         try
         {
           while (true)
           {
             var cr = consumer.Consume(cts.Token);
 
-            // TODO process the message for real...
-            _logger.LogInformation($"Consumed msg from topic {_topic} with key {cr.Message.Key,-10}...");
+            try
+            {
+              string json = cr.Message.Value;
+              var rawItem = JsonSerializer.Deserialize<RawAuctionItem>(json);
+              if (rawItem == null)
+              {
+                _logger.LogError($"Unable to deserialize raw auction item {cr.Message.Key}!");
+              }
+              else
+              {
+                await this.ProcessItemAsync(rawItem);
+              }
+            }
+            catch (Exception messageEx)
+            {
+              _logger.LogError(messageEx, "Error processing message.");
+            }
           }
         }
         catch (OperationCanceledException)
@@ -51,6 +80,44 @@ namespace Vishkar.Wow.AuctionEnhancer
         }
       }
       return 0;
+    }
+
+    private async Task ProcessItemAsync(RawAuctionItem rawItem)
+    {
+      var resultItemType = await _itemSvc.GetItemAsync(rawItem.ItemId, "static-us");
+      if (!resultItemType.Success) throw new Exception(resultItemType.Error.Detail);
+      var itemType = resultItemType.Value;
+
+      var auction = new Vishkar.Wow.Core.Models.AuctionItem
+      {
+        AuctionStartDateTime = rawItem.AuctionStartDateTime,
+        Id = rawItem.Id,
+        ItemId = rawItem.ItemId,
+        Quantity = rawItem.Quantity,
+        TimeLeft = rawItem.TimeLeft,
+        UnitPriceCp = rawItem.UnitPriceCp,
+        BuyoutCp = rawItem.BuyoutCp,
+        BidCp = rawItem.BidCp
+      };
+      auction.ItemName = itemType.Name;
+      auction.ItemQuality = itemType.Quality.Type;
+      auction.ItemLevel = itemType.Level;
+      auction.ItemClassId = itemType.ItemClass.Id;
+      auction.ItemSubclassId = itemType.ItemSubclass.Id;
+      auction.ItemInventoryType = itemType.InventoryType.Type;
+      auction.ItemPurchasePriceCp = itemType.PurchasePrice;
+      auction.ItemPurchaseQuantity = itemType.PurchaseQuantity;
+      auction.itemVendorSellPriceCp = itemType.SellPrice;
+
+      string key = $"auction_{auction.Id}";
+      string json = JsonSerializer.Serialize(auction);
+
+      _logger.LogInformation($"Sending msg {auction.Id}...");
+
+      await _targetQueue.SendMessageAsync(key, json, _targetTopic);
+      _logger.LogInformation("- done.");
+
+      // TODO investigate flush, is it imporant, is it bad that we have an open producer connection open?
     }
   }
 }

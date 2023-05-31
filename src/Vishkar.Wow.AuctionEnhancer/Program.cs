@@ -1,6 +1,8 @@
 ﻿using System;
+using ArgentPonyWarcraftClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Vishkar.Wow.AuctionEnhancer.Services;
 using Vishkar.Wow.Core;
 using Vishkar.Wow.Core.Extensions.DependencyInjection;
 
@@ -16,17 +18,19 @@ namespace Vishkar.Wow.AuctionEnhancer
 
       return host.Services
         .GetService<RawItemWatcherService>()
-        .Execute()
+        .ExecuteAsync()
         .Result;
     }
 
     private static void DiConfig(HostBuilderContext ctx, IServiceCollection services)
     {
-      // TODO add wow Client..
+      services.ConfigureWarcraftClientSecrets(ctx.Configuration);
+      services.ConfigureWowSettings(ctx.Configuration);
 
       services
         .AddKafka(ctx.Configuration)
         .AddWowCore()
+        .AddSingleton<IItemApi, CachedWarcraftItemApi>()
         .AddTransient<IQueueProducerService<string>, KafkaQueueProducerService<string>>()
         .AddTransient<RawItemWatcherService>();
     }

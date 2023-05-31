@@ -19,7 +19,7 @@ namespace Vishkar.Wow.AuctionProducer
 
       return host.Services
         .GetService<WowRunner>()
-        .Execute()
+        .ExecuteAsync()
         .Result;
     }
 

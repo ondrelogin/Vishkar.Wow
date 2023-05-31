@@ -15,5 +15,11 @@ namespace Vishkar.Wow.Core
 
       return source.Equals(value, StringComparison.InvariantCultureIgnoreCase);
     }
+    
+    public static string? GetAsString<TKey>(this IDictionary<TKey, string> dict, TKey key)
+    {
+      if (dict.TryGetValue(key, out var value)) return value;
+      return null;
+    }
   }
 }
