@@ -62,6 +62,7 @@ You will need to create a topic, run the following commands (with kafka running)
 
 ```
 kafka-topics --create --topic commodities-raw --bootstrap-server localhost:9092
+kafka-topics --create --topic commodities --bootstrap-server localhost:9092 --partitions 10
 kafka-topics --list --bootstrap-server localhost:9092
 ```
 

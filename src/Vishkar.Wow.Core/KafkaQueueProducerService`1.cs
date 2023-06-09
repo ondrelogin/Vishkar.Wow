@@ -19,13 +19,24 @@ namespace Vishkar.Wow.Core
       msg.Key = key;
       msg.Value = message;
       await _producerSvc.Value.ProduceAsync(topic, msg);
+      // TODO handle error
+    }
 
+    public async Task SendMessageWithPartitionAsync(string key, T message, string topic, int partition)
+    {
+      var tp = new TopicPartition(topic, new Partition(partition));
+
+      var msg = new Message<string, T>();
+      msg.Key = key;
+      msg.Value = message;
+      await _producerSvc.Value.ProduceAsync(tp, msg);
       // TODO handle error
     }
 
     public void Flush()
     {
-      // need to read up on what this actually is
+      // use to ensure that outgoing messages are sent before disposing
+      //   does dispose call this automatically?
       _producerSvc.Value.Flush(TimeSpan.FromSeconds(10));
     }
 
