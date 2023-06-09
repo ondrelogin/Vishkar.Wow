@@ -54,6 +54,16 @@ namespace Vishkar.Wow.AuctionEnhancer.Services
       _logger.LogInformation($"Looking up info on {itemId}...");
       var wsvc = new WarcraftClient(_settings.ClientId, _settings.ClientSecret, Region.US, Locale.en_US);
       var resultItem = await wsvc.GetItemAsync(itemId, namespaceString);
+
+      // if failure because of 429 : too many requests. wait a second and the re-request...
+      if (!resultItem.Success && resultItem.Error.Code == 429)
+      {
+        _logger.LogInformation($"-- 429 too many requests waiting 1 second...");
+        await Task.Delay(1000);
+        _logger.LogInformation($"--retrying info on {itemId}...");
+        resultItem = await wsvc.GetItemAsync(itemId, namespaceString);
+      }
+
       if (!resultItem.Success) return resultItem;
       _logger.LogInformation($"- found {resultItem.Value.Name}");
 

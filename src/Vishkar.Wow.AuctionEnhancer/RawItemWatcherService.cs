@@ -50,7 +50,7 @@ namespace Vishkar.Wow.AuctionEnhancer
           while (true)
           {
             var cr = consumer.Consume(cts.Token);
-
+            
             try
             {
               string json = cr.Message.Value;
@@ -114,10 +114,10 @@ namespace Vishkar.Wow.AuctionEnhancer
 
       _logger.LogInformation($"Sending msg {auction.Id}...");
 
-      await _targetQueue.SendMessageAsync(key, json, _targetTopic);
+      // 10 partitions, maybe something more "smarter" later...
+      int partition = auction.ItemClassId % 10;
+      await _targetQueue.SendMessageWithPartitionAsync(key, json, _targetTopic, partition);
       _logger.LogInformation("- done.");
-
-      // TODO investigate flush, is it imporant, is it bad that we have an open producer connection open?
     }
   }
 }
